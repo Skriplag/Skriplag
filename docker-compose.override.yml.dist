@@ -1,0 +1,45 @@
+services:
+
+  mariadb:
+    restart: no
+    ports:
+      - ${MARIADB_PORT:-3333}:3306
+
+  nginx:
+    restart: no
+    volumes:
+      - ./docker/nginx/development:/etc/nginx/templates
+    ports:
+      - ${NODE_PORT_WS:-3001}:3001
+
+  php-fpm:
+    restart: no
+    build:
+      context: ./docker/php-fpm
+      args:
+        - PHP_VERSION=${PHP_VERSION}
+        - PHP_XDEBUG=${PHP_XDEBUG:-0}
+        - TZ=${TZ}
+    environment:
+        - PHP_IDE_CONFIG=serverName=VespDocker
+    command: sh -c 'composer install && cron && php-fpm'
+
+  node:
+    restart: no
+    # command: sh -c 'rm -rf /tmp/* && npm i && npm run analyze'
+    command: sh -c 'rm -rf /tmp/* && npm i && npm run dev'
+
+  redis:
+    restart: no
+    ports:
+      - ${REDIS_PORT:-6379}:6379
+
+  manticore:
+    restart: no
+    ports:
+      - ${MANTICORE_PORT:-9308}:9308
+
+  mailhog:
+    image: teawithfruit/mailhog
+    ports:
+      - ${MAILHOG_PORT:-8090}:8025
