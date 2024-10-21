@@ -1,0 +1,92 @@
+services:
+
+  mariadb:
+    image: mariadb:${MARIADB_VERSION}
+    environment:
+      - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=yes
+      - MARIADB_DATABASE=${DB_DATABASE}
+      - MARIADB_USER=${DB_USERNAME}
+      - MARIADB_PASSWORD=${DB_PASSWORD}
+      - TZ=${TZ}
+    volumes:
+      - ./docker/mariadb:/var/lib/mysql
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:${NGINX_VERSION}
+    environment:
+      - NGINX_PORT=${NGINX_PORT}
+      - NODE_PORT=${NODE_PORT}
+      - TZ=${TZ}
+    volumes:
+      - ./docker/nginx/production:/etc/nginx/templates
+      - ./frontend:/vesp/frontend
+      - ./www:/vesp/www
+    ports:
+      - ${NGINX_HOST}:${NGINX_PORT}:80
+    restart: unless-stopped
+    depends_on:
+      - php-fpm
+      - mariadb
+
+  php-fpm:
+    image: bezumkin/orbita-php
+    volumes:
+      - ./.env:/vesp/.env
+      - ./core:/vesp/core
+      - ./www:/vesp/www
+      - ./upload:/vesp/upload
+      - ./tmp:/vesp/tmp
+      - ./log:/vesp/log
+      - ./frontend:/vesp/frontend
+    cap_add:
+      - SYS_PTRACE
+    depends_on:
+      - mariadb
+    environment:
+      - TZ=${TZ}
+      - COMPOSER_ALLOW_SUPERUSER=1
+    restart: unless-stopped
+    working_dir: /vesp/core
+    command: sh -c 'composer install --no-dev && composer db:migrate && cron && php-fpm'
+
+  node:
+    image: node:${NODE_VERSION}
+    volumes:
+      - ./.env:/vesp/.env
+      - ./frontend:/vesp/frontend
+    depends_on:
+      - nginx
+    environment:
+      - TZ=${TZ}
+    network_mode: 'service:nginx'
+    restart: unless-stopped
+    working_dir: /vesp/frontend
+    command: sh -c 'rm -rf /tmp/* && npm i --omit=dev && npm run build && node ./.output/server/index.mjs'
+
+  redis:
+    image: redis:${REDIS_VERSION}
+    volumes:
+      - ./docker/redis:/data
+    environment:
+      - TZ=${TZ}
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel nothing
+
+  manticore:
+    image: manticoresearch/manticore
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ./docker/manticore:/var/lib/manticore/
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+      memlock:
+        soft: -1
+        hard: -1
+    depends_on:
+      - mariadb
+    restart: unless-stopped
