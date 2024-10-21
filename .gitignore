@@ -1,0 +1,16 @@
+/.idea
+/.local
+/core/vendor
+/docker/mariadb
+/docker/manticore
+/docker/redis
+/frontend/.nuxt
+/frontend/.eslintcache
+/frontend/.stylelintcache
+/frontend/.output
+/frontend/node_modules
+/tmp/
+/upload/
+/log/
+/.env
+/docker-compose.override.yml
