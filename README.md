@@ -1,4 +1,4 @@
-## Orbita
+## SKRIPLAG
 
 Orbita is free open source application for creating personal blog with subscriptions.
 
